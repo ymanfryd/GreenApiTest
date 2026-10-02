@@ -1,5 +1,11 @@
-import { useState, type SubmitEventHandler } from "react";
-import { sendMessage, type InstanceCredentials } from "../api/greenApi";
+import { useCallback, useState, type SubmitEventHandler } from "react";
+import {
+  sendMessage,
+  type InstanceCredentials,
+  type NotificationBody,
+} from "../api/greenApi";
+import { useNotifications } from "../hooks/useNotifications";
+import { useReceiveSettings } from "../hooks/useReceiveSettings";
 
 type Props = {
   creds: InstanceCredentials;
@@ -16,6 +22,16 @@ export default function SendMessage({ creds, onBack }: Props) {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [received, setReceived] = useState<string[]>([]);
+
+  const onNotification = useCallback((body: NotificationBody) => {
+    const text = body.messageData?.textMessageData?.textMessage;
+    if (body.typeWebhook !== "incomingMessageReceived" || !text) return;
+    setReceived((items) => [...items, text]);
+  }, []);
+
+  const { enabled, error: settingsError } = useReceiveSettings(creds);
+  const receiveError = useNotifications(creds, onNotification, enabled);
 
   const submit: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
@@ -61,6 +77,13 @@ export default function SendMessage({ creds, onBack }: Props) {
       </button>
 
       {error && <p role="alert">{error}</p>}
+      {settingsError && <p role="alert">{settingsError}</p>}
+      {receiveError && <p role="alert">{receiveError}</p>}
+
+      <h2>Входящие</h2>
+      {received.map((text, index) => (
+        <p key={index}>{text}</p>
+      ))}
     </form>
   );
 }
