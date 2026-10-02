@@ -26,9 +26,34 @@ export interface DeleteNotificationResponse {
   reason: string;
 }
 
+export interface NotificationMessageData {
+  typeMessage: string;
+  textMessageData?: { textMessage?: string };
+}
+
+export interface NotificationBody {
+  typeWebhook: string;
+  idMessage?: string;
+  messageData?: NotificationMessageData;
+}
+
 export interface Notification {
   receiptId: number;
-  body: Record<string, unknown>;
+  body: NotificationBody;
+}
+
+export interface InstanceSettings {
+  webhookUrl: string;
+  incomingWebhook: "yes" | "no";
+}
+
+export interface SetSettingsPayload {
+  webhookUrl?: string;
+  incomingWebhook?: "yes" | "no";
+}
+
+export interface SetSettingsResponse {
+  saveSettings: boolean;
 }
 
 export const defaultApiUrl = (id: string): string =>
@@ -73,4 +98,17 @@ export const deleteNotification = (
 ): Promise<DeleteNotificationResponse | null> =>
   request<DeleteNotificationResponse>(url(creds, "deleteNotification", `/${receiptId}`), {
     method: "DELETE",
+  });
+
+export const getSettings = (creds: InstanceCredentials): Promise<InstanceSettings | null> =>
+  request<InstanceSettings>(url(creds, "getSettings"));
+
+export const setSettings = (
+  creds: InstanceCredentials,
+  settings: SetSettingsPayload,
+): Promise<SetSettingsResponse | null> =>
+  request<SetSettingsResponse>(url(creds, "setSettings"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
   });
