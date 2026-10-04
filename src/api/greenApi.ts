@@ -53,6 +53,7 @@ export interface InstanceData {
 export interface NotificationBody {
   typeWebhook: string;
   instanceData?: InstanceData;
+  timestamp?: number;
   idMessage?: string;
   senderData?: SenderData;
   messageData?: MessageData;

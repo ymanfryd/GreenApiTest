@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { InstanceCredentials } from "./api/greenApi";
 import Login from "./pages/Login";
-import SendMessage from "./pages/SendMessage";
+import Chat from "./pages/Chat";
 import { load, remove, save } from "./utils/storage";
 
 const SESSION_KEY = "green_api_credentials";
@@ -21,5 +21,5 @@ export default function App() {
     setCreds(null);
   };
 
-  return creds ? <SendMessage creds={creds} onBack={disconnect} /> : <Login onConnect={connect} />;
+  return creds ? <Chat creds={creds} onBack={disconnect} /> : <Login onConnect={connect} />;
 }
