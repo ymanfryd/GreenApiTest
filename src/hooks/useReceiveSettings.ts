@@ -6,6 +6,33 @@ export interface ReceiveSettingsState {
   error: string;
 }
 
+// Only incoming text messages are handled, so every other notification kind is
+// turned off explicitly instead of relying on the instance defaults.
+export const RECEIVE_SETTINGS = {
+  webhookUrl: "",
+  incomingWebhook: "yes",
+  outgoingWebhook: "no",
+  outgoingMessageWebhook: "no",
+  outgoingAPIMessageWebhook: "no",
+  editedMessageWebhook: "no",
+  deletedMessageWebhook: "no",
+  pollMessageWebhook: "no",
+  stateWebhook: "no",
+} as const;
+
+const isSet = (value: unknown, expected: "yes" | "no"): boolean => value === expected;
+
+export const isConfigured = (settings: Record<string, unknown>): boolean =>
+  !settings.webhookUrl &&
+  isSet(settings.incomingWebhook, "yes") &&
+  isSet(settings.outgoingWebhook, "no") &&
+  isSet(settings.outgoingMessageWebhook, "no") &&
+  isSet(settings.outgoingAPIMessageWebhook, "no") &&
+  isSet(settings.editedMessageWebhook, "no") &&
+  isSet(settings.deletedMessageWebhook, "no") &&
+  isSet(settings.pollMessageWebhook, "no") &&
+  isSet(settings.stateWebhook, "no");
+
 // getSettings and setSettings allow one request per second, and StrictMode fires effects twice.
 const MIN_GAP_MS = 1100;
 const lastCallAt = new Map<string, number>();
@@ -28,14 +55,13 @@ export function useReceiveSettings(creds: InstanceCredentials): ReceiveSettingsS
         const settings = await throttle(creds.idInstance, () => getSettings(creds));
         if (stopped) return;
 
-        if (settings?.incomingWebhook === "yes" && !settings.webhookUrl) {
+        // setSettings restarts the instance and takes up to five minutes to apply.
+        if (settings && isConfigured(settings)) {
           setState({ enabled: true, error: "" });
           return;
         }
 
-        const saved = await throttle(creds.idInstance, () =>
-          setSettings(creds, { webhookUrl: "", incomingWebhook: "yes" }),
-        );
+        const saved = await throttle(creds.idInstance, () => setSettings(creds, RECEIVE_SETTINGS));
         if (stopped) return;
         if (saved?.saveSettings === false) {
           setState({ enabled: false, error: "GREEN-API не сохранил настройки получения" });

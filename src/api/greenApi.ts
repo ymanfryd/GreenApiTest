@@ -26,15 +26,36 @@ export interface DeleteNotificationResponse {
   reason: string;
 }
 
-export interface NotificationMessageData {
+export interface MessageData {
   typeMessage: string;
   textMessageData?: { textMessage?: string };
 }
 
+export interface SenderData {
+  // chatId assigned by MAX, negative for group chats.
+  chatId: string;
+  chatName?: string;
+  chatType?: "user" | "group" | (string & {});
+  // Inside a group this differs from chatId.
+  sender?: string;
+  senderName?: string;
+  senderType?: "user" | (string & {});
+  senderContactName?: string;
+  senderPhoneNumber?: number;
+}
+
+export interface InstanceData {
+  idInstance?: number;
+  wid?: string;
+  typeInstance?: string;
+}
+
 export interface NotificationBody {
   typeWebhook: string;
+  instanceData?: InstanceData;
   idMessage?: string;
-  messageData?: NotificationMessageData;
+  senderData?: SenderData;
+  messageData?: MessageData;
 }
 
 export interface Notification {
@@ -43,14 +64,19 @@ export interface Notification {
 }
 
 export interface InstanceSettings {
-  webhookUrl: string;
-  incomingWebhook: "yes" | "no";
-}
-
-export interface SetSettingsPayload {
+  [key: string]: string | undefined;
   webhookUrl?: string;
   incomingWebhook?: "yes" | "no";
+  outgoingWebhook?: "yes" | "no";
+  outgoingMessageWebhook?: "yes" | "no";
+  outgoingAPIMessageWebhook?: "yes" | "no";
+  editedMessageWebhook?: "yes" | "no";
+  deletedMessageWebhook?: "yes" | "no";
+  pollMessageWebhook?: "yes" | "no";
+  stateWebhook?: "yes" | "no";
 }
+
+export type SetSettingsPayload = InstanceSettings;
 
 export interface SetSettingsResponse {
   saveSettings: boolean;
