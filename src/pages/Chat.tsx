@@ -6,7 +6,12 @@ import {
   useState,
   type SubmitEventHandler,
 } from "react";
-import { sendMessage, type InstanceCredentials } from "../api/greenApi";
+import {
+  checkAccount,
+  CheckAccountError,
+  sendMessage,
+  type InstanceCredentials,
+} from "../api/greenApi";
 import Avatar from "../components/Avatar";
 import { useChats, type Chat } from "../hooks/useChats";
 import { useNotifications } from "../hooks/useNotifications";
@@ -41,6 +46,7 @@ export default function Chat({ creds, onBack }: Props) {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const feedRef = useRef<HTMLDivElement>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
@@ -60,16 +66,45 @@ export default function Chat({ creds, onBack }: Props) {
     draftRef.current?.focus();
   }, []);
 
-  const create: SubmitEventHandler<HTMLFormElement> = (event) => {
+  const create: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
     const normalized = normalizePhone(phone);
     if (!isRoutablePhone(normalized)) {
       setError("Введите номер в формате 79991234567 или +375291234567");
       return;
     }
+
+    const known = chats.find((chat) => chat.phone === normalized);
+    if (known) {
+      setError("");
+      setPhone("");
+      openComposer(known.id);
+      return;
+    }
+
+    setChecking(true);
     setError("");
-    setPhone("");
-    openComposer(createChat(normalized));
+    try {
+      const account = await checkAccount(creds, Number(normalized));
+      if (!account.exist) {
+        setError("У этого номера нет аккаунта в MAX");
+        return;
+      }
+      setPhone("");
+      openComposer(createChat(normalized, account.chatId));
+    } catch (e) {
+      if (e instanceof CheckAccountError) {
+        setError(
+          e.instanceUnavailable
+            ? "Инстанс не авторизован, получить chatId нельзя"
+            : `GREEN-API не проверил номер: ${e.reason}`,
+        );
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    } finally {
+      setChecking(false);
+    }
   };
 
   const send: SubmitEventHandler<HTMLFormElement> = async (event) => {
@@ -114,8 +149,11 @@ export default function Chat({ creds, onBack }: Props) {
               placeholder="79991234567"
               inputMode="tel"
               aria-label="Номер получателя"
+              disabled={checking}
             />
-            <button type="submit">Создать чат</button>
+            <button type="submit" disabled={checking}>
+              {checking ? "Проверяем…" : "Создать чат"}
+            </button>
           </form>
 
           {chats.length === 0 ? (

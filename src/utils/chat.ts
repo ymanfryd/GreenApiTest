@@ -1,12 +1,13 @@
 // MAX accepts a phone number as a chat identifier in the form
 // phoneNumber@c.us, and reports the chatId it assigns in the notification.
+// Only the country codes 7 and 375 are allowed in that form, which is 11
+// digits for a Russian number and 12 for a Belarusian one.
 // https://green-api.com/v3/docs/api/chat-id/
-
-const COUNTRY_CODE_LENGTH = 11;
 
 export const normalizePhone = (raw: string): string => {
   const digits = raw.replace(/\D/g, "");
-  if (digits.length === COUNTRY_CODE_LENGTH && digits.startsWith("8")) return `7${digits.slice(1)}`;
+  // The national 8 is written instead of 7, as in 89991234567.
+  if (digits.length === 11 && digits.startsWith("8")) return `7${digits.slice(1)}`;
   return digits;
 };
 
@@ -17,9 +18,10 @@ export const formatPhone = (phone: string): string => {
   return `+${phone}`;
 };
 
+// The API accepts the country codes 7 and 375, but any number starting with 7
+// has the same shape, so this checks the form only, not the country itself.
 export const isRoutablePhone = (phone: string): boolean =>
-  (phone.length === COUNTRY_CODE_LENGTH && phone.startsWith("7")) ||
-  (phone.length === 12 && phone.startsWith("375"));
+  (phone.length === 11 && phone.startsWith("7")) || (phone.length === 12 && phone.startsWith("375"));
 
 export const chatAddress = (chat: { chatId?: string; phone: string }): string =>
   chat.chatId ?? `${chat.phone}@c.us`;

@@ -9,7 +9,9 @@ export interface ChatsState {
   chats: Chat[];
   addOutgoing: (chatId: string, text: string, idMessage?: string) => void;
   addIncoming: (body: NotificationBody) => void;
-  createChat: (phone: string) => string;
+  // chatId comes from checkAccount, so a message can be addressed the way the
+  // API recommends before the other side has replied even once.
+  createChat: (phone: string, chatId?: string) => string;
 }
 
 const STORAGE_KEY = "green_api_chats";
@@ -38,11 +40,11 @@ export function useChats(): ChatsState {
   }, []);
 
   const createChat = useCallback(
-    (phone: string): string => {
+    (phone: string, chatId?: string): string => {
       const existing = chats.find((chat) => chat.phone === phone);
       if (existing) return existing.id;
 
-      const chat: Chat = { id: makeId(), phone, name: "", messages: [] };
+      const chat: Chat = { id: makeId(), phone, name: "", chatId, messages: [] };
       setChats((items) => (items.some((item) => item.phone === phone) ? items : [...items, chat]));
       return chat.id;
     },
