@@ -1,75 +1,73 @@
-# React + TypeScript + Vite
+# Чат MAX через GREEN-API
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Веб-чат для обмена текстовыми сообщениями в мессенджере MAX через сервис
+[GREEN-API](https://green-api.com/max). Внешний вид взят у [web.max.ru](https://web.max.ru/).
 
-Currently, two official plugins are available:
+Что умеет:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- подключение по учётным данным инстанса GREEN-API;
+- создание чата по номеру телефона получателя;
+- отправка текстовых сообщений методом
+  [SendMessage](https://green-api.com/v3/docs/api/sending/SendMessage/);
+- приём ответов через
+  [HTTP API](https://green-api.com/v3/docs/api/receiving/technology-http-api/):
+  `receiveNotification` и `deleteNotification`.
 
-## React Compiler
+## Что понадобится
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Node.js** `^20.19.0` или `>=22.12.0` — требование Vite 8.
+- **Инстанс GREEN-API с мессенджером MAX.** Заведите его в
+  [личном кабинете](https://console.green-api.com) и авторизуйте: отсканируйте QR-код,
+  который там показан. Инстанс должен быть в состоянии `authorized`.
+- **`idInstance` и `apiTokenInstance`** — оба значения видны в карточке инстанса в кабинете.
 
-## Expanding the ESLint configuration
+## Запуск
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Откройте адрес из вывода Vite, по умолчанию <http://localhost:5173>.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Сборка и проверки:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run build   # проверка типов и продакшн-сборка в dist/
+npm run lint    # ESLint
+npm run preview # локальный просмотр собранной версии
 ```
+
+## Как пользоваться
+
+1. Введите `idInstance` и `apiTokenInstance`, нажмите **Войти**. Приложение проверит
+   состояние инстанса через `getStateInstance` и не пустит дальше, если он не авторизован.
+2. Введите номер получателя и нажмите **Создать чат**. Поддерживаются номера РФ и РБ
+   в формате `79991234567` или `+375291234567`. Номер проверяется методом `checkAccount`:
+   если аккаунта MAX на нём нет, чат не создастся. Приложение резолвит номер в `chatId`
+   и дальше адресует сообщения по нему.
+3. Напишите текст и нажмите **Отправить** или `Enter` (перенос строки — `Shift+Enter`).
+4. Ответ получателя появится в ленте: приложение держит длинный опрос очереди уведомлений
+   (до 5 секунд на ответ) и сопоставляет ответ с чатом по `chatId`, а если его ещё нет —
+   по номеру телефона.
+
+Учётные данные и переписка живут в `sessionStorage` и исчезают при закрытии вкладки.
+
+## Настройки инстанса
+
+Приложение само включает приём уведомлений методом `setSettings`: очищает `webhookUrl`
+и выставляет нужные флаги. Выключать в кабинете ничего не требуется.
+
+**Настройки применяются в течение 5 минут после первого подключения**, и инстанс при этом
+перезапускается — так описано в
+[документации](https://green-api.com/v3/docs/api/account/SetSettings/). Если вы отправили
+сообщение, а ответ не появился, подождите несколько минут: входящие начнут приходить сами.
+
+## Ограничения
+
+- Только текст. Вложения, геолокация, опросы и реакции не поддерживаются, а входящие
+  не текстовые сообщения пропускаются.
+- Нет статусов доставки и прочтения: для них нужно включить `outgoingWebhook` и
+  обрабатывать уведомления о статусах.
+- Историю переписки приложение не подгружает — только то, что прошло через него.
+- Групповые чаты пропускаются: чаты создаются по номеру телефона.
