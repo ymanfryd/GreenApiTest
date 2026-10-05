@@ -4,6 +4,28 @@ export interface InstanceCredentials {
   apiUrl: string;
 }
 
+export interface AccountLookup {
+  exist: boolean;
+  chatId: string;
+  fromCache: boolean;
+}
+
+// checkAccount answers with HTTP 200 and status false when the instance is not
+// authorized yet or when the phone lookup limit is reached, so the body decides.
+export class CheckAccountError extends Error {
+  readonly reason: string;
+
+  constructor(reason: string) {
+    super(reason);
+    this.name = "CheckAccountError";
+    this.reason = reason;
+  }
+
+  get instanceUnavailable(): boolean {
+    return this.reason.includes("not authorized");
+  }
+}
+
 export type InstanceState =
   | "authorized"
   | "notAuthorized"
@@ -101,6 +123,32 @@ async function request<T>(endpoint: string, init?: RequestInit): Promise<T | nul
 export const getStateInstance = (
   creds: InstanceCredentials,
 ): Promise<InstanceStateResponse | null> => request<InstanceStateResponse>(url(creds, "getStateInstance"));
+
+// Turns a phone number into the chatId MAX reports for it. Sending needs it,
+// because MAX assigns its own chatId and the number alone resolves to a chat
+// only after the other side replies.
+export const checkAccount = async (
+  creds: InstanceCredentials,
+  phoneNumber: number,
+): Promise<AccountLookup> => {
+  const response = await request<Partial<AccountLookup> & { reason?: string }>(
+    url(creds, "checkAccount"),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phoneNumber }),
+    },
+  );
+
+  if (typeof response?.exist !== "boolean") {
+    throw new CheckAccountError(response?.reason ?? "CHECK_ACCOUNT_FAILED");
+  }
+  return {
+    exist: response.exist,
+    chatId: response.chatId ?? "",
+    fromCache: response.fromCache ?? false,
+  };
+};
 
 export const sendMessage = (
   creds: InstanceCredentials,
